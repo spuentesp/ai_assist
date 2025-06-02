@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat con Ollama</title>
+    <link rel="stylesheet" href="/static/bootstrap-4.4.1-dist/css/bootstrap.css">
+    <link rel="stylesheet" href="/static/bootstrap-386.min.css">
+    <script src="/static/bootstrap-4.4.1-dist/js/bootstrap.js"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.4"></script>
+    <style>
+        body { padding: 20px; background-color: #000; color: #0f0; }
+        .chat-box {
+            max-height: 400px;
+            overflow-y: auto;
+            background: #111;
+            padding: 10px;
+            border: 1px solid #0f0;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .message { margin-bottom: 10px; }
+        .message.user { color: #0f0; }
+        .message.bot { color: #0ff; }
+        .message.error { color: #f00; }
+        textarea { width: 100%; background: #000; color: #0f0; border: 1px solid #0f0; }
+        .btn-primary { background-color: #000; border-color: #0f0; color: #0f0; }
+        .btn-primary:hover { background-color: #0f0; color: #000; }
+    </style>
+</head>
+<body class="bootstrap-386">
+
+    <div class="container">
+        <h1 class="display-4">Chat con Ollama</h1>
+
+        <div id="response-area" class="chat-box well mb-3">
+            <!-- Historial de mensajes -->
+        </div>
+
+        <form id="chat-form"
+              hx-post="/chat"
+              hx-trigger="submit"
+              hx-target="#response-area"
+              hx-swap="beforeend"
+              class="well">
+            <div class="form-group">
+                <label for="message">Escribe tu mensaje:</label>
+                <textarea name="message" id="message" rows="3" class="form-control"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Enviar</button>
+        </form>
+    </div>
+<script>
+    document.body.addEventListener('htmx:afterSwap', (event) => {
+        if (event.target.id === "response-area") {
+            event.target.scrollTop = event.target.scrollHeight;
+        }
+    });
+</script>
+</body>
+</html>
