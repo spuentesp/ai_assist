@@ -1,2 +1,5 @@
 fastapi[all]
 requests
+faiss-cpu
+sentence-transformers
+uvicorn
