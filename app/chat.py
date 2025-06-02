@@ -1,54 +1,95 @@
 from fastapi import Request, APIRouter, Form
+from fastapi.responses import JSONResponse, HTMLResponse
+
 from app.ollama_client import ask_ollama
 from app.short_term_memory import ShortTermMemory
+from app.long_term_memory import LongTermMemory
 
 router = APIRouter()
-memory = ShortTermMemory()
+short_memory = ShortTermMemory()
+long_memory = LongTermMemory()
+
 
 @router.post("/chat")
 async def chat(request: Request, message: str = Form(None)):
     try:
-        if message is None:
-            # JSON case
+        if message is not None:
+            return await handle_htmx_request(message)
+        else:
             data = await request.json()
             return await handle_json_request(data)
-        else:
-            # HTMX (form) case
-            return await handle_htmx_request(message)
     except Exception as e:
         print(f"[ERROR] Fallo en /chat: {str(e)}")
-        return handle_error_response(message, e)
+        return handle_error_response(e, is_htmx=(message is not None))
+
+
+# --- Processors ---
 
 async def handle_json_request(data):
-    message = data.get("message")
-    if not message:
-        return {"error": "No se proporcionó ningún mensaje."}
-
+    message = extract_message(data)
     response = process_message(message)
-    return {"response": response}
+    return JSONResponse(content={"response": response})
+
 
 async def handle_htmx_request(message):
     response = process_message(message)
-    return f"""
-    <hr>
-        <div class='message user'><strong>Usuario:</strong> {message}</div>
-        <div class='message bot'><strong>Asistente:</strong> {response}</div>
-    """
+    html_fragment = build_htmx_response(message, response)
+    return HTMLResponse(content=html_fragment)
+
 
 def process_message(message):
-    similar_context = memory.query(message)
-    context_str = "\n".join(similar_context)
-    enriched_prompt = build_enriched_prompt(message, context_str)
+    if not message:
+        raise ValueError("No se proporcionó ningún mensaje.")
+
+    # Recuperar contexto corto
+    short_context = short_memory.query(message)
+    short_context_str = "\n".join(short_context)
+
+    # Recuperar contexto largo
+    long_context = long_memory.query(message)
+    long_context_str = "\n".join(long_context)
+
+    # Combinar
+    enriched_prompt = build_enriched_prompt(message, short_context_str, long_context_str)
 
     response = ask_ollama(enriched_prompt)
-    memory.add_interaction(message, response)
+
+    # Guardar en ambas memorias
+    short_memory.add_interaction(message, response)
+    long_memory.add_interaction(message, response)
+
     return response
 
-def build_enriched_prompt(message, context_str):
-    return f"Contexto previo:\n{context_str}\n\nPregunta:\n{message}"
 
-def handle_error_response(message, error):
-    if message is None:
-        return {"error": f"Error interno: {str(error)}"}
+# --- Builders ---
+
+def extract_message(data):
+    return data.get("message")
+
+
+def build_enriched_prompt(message, short_context_str, long_context_str):
+    return f"""Contexto corto plazo:
+{short_context_str}
+
+Contexto largo plazo:
+{long_context_str}
+
+Pregunta:
+{message}
+"""
+
+
+def build_htmx_response(message, response):
+    return f"""
+    <hr>
+    <div class='message user'><strong>Usuario:</strong> {message}</div>
+    <div class='message bot'><strong>Asistente:</strong> {response}</div>
+    """
+
+
+def handle_error_response(error, is_htmx=False):
+    error_msg = f"Error interno: {str(error)}"
+    if is_htmx:
+        return HTMLResponse(content=f"<div class='message error'><strong>Error:</strong> {error_msg}</div>")
     else:
-        return f"<div class='message error'><strong>Error:</strong> {str(error)}</div>"
+        return JSONResponse(content={"error": error_msg}, status_code=500)
