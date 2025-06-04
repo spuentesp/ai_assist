@@ -30,6 +30,11 @@ class ResourceManager:
 resource_manager = ResourceManager()
 
 async def resource_auth_middleware(request: Request, call_next):
+    # Permitir automáticamente si viene de localhost
+    client_host = request.client.host    
+    if client_host in ("127.0.0.1", "localhost", "::1"):
+        return await call_next(request)
+    
     api_key = request.headers.get("X-Api-Key")
     if not api_key or not resource_manager.is_authorized(api_key):
         raise HTTPException(status_code=401, detail="Unauthorized resource")

@@ -1,9 +1,9 @@
 from fastapi import Request, APIRouter, Form
 from fastapi.responses import JSONResponse, HTMLResponse
 
-from app.ollama_client import ask_ollama
-from app.short_term_memory import ShortTermMemory
-from app.long_term_memory import LongTermMemory
+from .llm_clients.llm_router import ask_llm
+from .memory.short_term_memory import ShortTermMemory
+from .memory.long_term_memory import LongTermMemory
 
 router = APIRouter()
 short_memory = ShortTermMemory()
@@ -52,7 +52,7 @@ def process_message(message):
     # Combinar
     enriched_prompt = build_enriched_prompt(message, short_context_str, long_context_str)
 
-    response = ask_ollama(enriched_prompt)
+    response = ask_llm(enriched_prompt)
 
     # Guardar en ambas memorias
     short_memory.add_interaction(message, response)

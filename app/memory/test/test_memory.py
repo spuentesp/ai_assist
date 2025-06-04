@@ -1,4 +1,4 @@
-from app.short_term_memory import ShortTermMemory
+from app.memory.short_term_memory import ShortTermMemory
 
 memory = ShortTermMemory(max_items=5)
 

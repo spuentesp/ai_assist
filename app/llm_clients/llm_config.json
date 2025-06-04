@@ -1,0 +1,14 @@
+{
+  "priority": ["deepseek", "ollama"],
+  "fallback_enabled": true,
+  "models": {
+    "ollama": {
+      "enabled": true,
+      "model_name": "mistral"
+    },
+    "deepseek": {
+      "enabled": true,
+      "model_name": "deepseek-chat"
+    }
+  }
+}
