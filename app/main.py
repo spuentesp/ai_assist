@@ -3,7 +3,10 @@ from fastapi.templating import Jinja2Templates
 from app.chat import router as chat_router
 from fastapi.staticfiles import StaticFiles
 
+from .security.resource_manager import resource_auth_middleware
+
 app = FastAPI()
+app.middleware("http")(resource_auth_middleware)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")

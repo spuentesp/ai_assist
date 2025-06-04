@@ -1,0 +1,6 @@
+{
+  "resources": [
+    {"name": "Sebastian-PC", "api_key": "abc123"},
+    {"name": "Sebastian-Phone", "api_key": "def456"}
+  ]
+}
