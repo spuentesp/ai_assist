@@ -1,14 +1,10 @@
 import os
 import requests
-from dotenv import load_dotenv
-from app.embeddings.embeddings import DeepSeekEmbedding
-from app.llm_clients.adapters.adapter_registry import register_adapter
+from app.embeddings import DeepSeekEmbedding
 
-load_dotenv()
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_APIKEY")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 
-@register_adapter("deepseek")
-def ask(prompt, model="deepseek-chat"):
+def ask_deepseek(prompt, model="deepseek-chat"):
     url = "https://api.deepseek.com/chat/completions"
     headers = {
         "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
@@ -24,6 +20,5 @@ def ask(prompt, model="deepseek-chat"):
     response.raise_for_status()
     return response.json()["choices"][0]["message"]["content"]
 
-@register_adapter("deepseek")
 def get_embedding_function(model: str = "deepseek-chat"):
-    return DeepSeekEmbedding(model=model, api_key=DEEPSEEK_API_KEY)
+    return DeepSeekEmbedding(api_key=DEEPSEEK_API_KEY)

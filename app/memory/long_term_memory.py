@@ -1,35 +1,46 @@
-import chromadb
-from sentence_transformers import SentenceTransformer
+from app.core.chroma_core import ChromaCore
+from app.llm_clients.llm_router import get_embedding_model_and_config
 
 class LongTermMemory:
-    def __init__(self, persist_directory="./chroma_memory"):
-        self.client = chromadb.PersistentClient(path=persist_directory)
-        self.collection = self.client.get_or_create_collection("memory")
-        self.model = SentenceTransformer('all-MiniLM-L6-v2')
+    def __init__(self):
+        model_key, model_config = get_embedding_model_and_config()
 
-    def add(self, id, text, metadata=None):
-        embedding = self.model.encode([text])[0]
-        self.collection.add(
-            ids=[id],
-            embeddings=[embedding],
-            documents=[text],
-            metadatas=[metadata or {}]
-        )
-    
-    def add_interaction(self, user_message, assistant_response):
+        self.sources = {
+                "chroma": ChromaCore(
+        collection_name="long_memory",
+        embedding_model=model_key,
+        model_config=model_config
+    ),
+            # en el futuro:
+            # "doc_db": DocumentDBClient(),
+            # "sql": SQLMemoryClient(),
+            # "faiss": FAISSMemory(path, embedding_fn),
+        }
+
+    def add_interaction(self, user_message: str, assistant_response: str):
         combined = f"Usuario: {user_message}\nAsistente: {assistant_response}"
-        embedding = self.model.encode([combined])[0]
-        self.collection.add(
-            ids=[str(len(self.collection.get()['ids']) + 1)],
-            embeddings=[embedding],
-            documents=[combined],
-            metadatas={}
-        )
+        doc_id = f"msg-{self.sources['chroma'].collection.count() + 1}"
+        self.sources["chroma"].add_document(doc_id, combined)
+        # Aquí podrías agregar otras fuentes si quisieras persistir en múltiples lugares
 
-    def query(self, text, n_results=3):
-        embedding = self.model.encode([text])[0]
-        results = self.collection.query(
-            query_embeddings=[embedding],
-            n_results=n_results
-        )
+    def query(self, message: str, n_results: int = 5) -> list[str]:
+        results = []
+
+        chroma_results = self.sources["chroma"].query(message, n_results=n_results)
+        results.extend(chroma_results.get("documents", [[]])[0])
+
+        # futuro:
+        # doc_results = self.sources["doc_db"].query(...)
+        # results.extend(doc_results)
+
         return results
+
+    def get_stats(self):
+        return {
+            "chroma": self.sources["chroma"].get_stats(),
+            # "doc_db": self.sources["doc_db"].get_stats(),
+        }
+
+    def clear_all(self):
+        self.sources["chroma"].clear_all()
+        # self.sources["doc_db"].clear_all()

@@ -2,59 +2,81 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Chat con Ollama</title>
+    <title>Terminal AI Retro</title>
     <link rel="stylesheet" href="/static/bootstrap-4.4.1-dist/css/bootstrap.css">
     <link rel="stylesheet" href="/static/bootstrap-386.min.css">
-    <script src="/static/bootstrap-4.4.1-dist/js/bootstrap.js"></script>
     <script src="https://unpkg.com/htmx.org@1.9.4"></script>
     <style>
-        body { padding: 20px; background-color: #000; color: #0f0; }
-        .chat-box {
-            max-height: 400px;
-            overflow-y: auto;
-            background: #111;
-            padding: 10px;
-            border: 1px solid #0f0;
-            font-family: monospace;
-            font-size: 14px;
-        }
-        .message { margin-bottom: 10px; }
+        body { background-color: #000; color: #0f0; padding: 20px; font-family: monospace; }
+        textarea, input { background-color: #000; color: #0f0; border: 1px solid #0f0; }
+        .hidden { display: none; }
+        .tab-content { margin-top: 20px; }
+        .tab-pane { padding: 10px; background: #111; border: 1px solid #0f0; }
+        .nav-tabs .nav-link.active { background-color: #0f0; color: #000; }
+        .nav-tabs .nav-link { background: #000; color: #0f0; border: 1px solid #0f0; }
         .message.user { color: #0f0; }
         .message.bot { color: #0ff; }
         .message.error { color: #f00; }
-        textarea { width: 100%; background: #000; color: #0f0; border: 1px solid #0f0; }
-        .btn-primary { background-color: #000; border-color: #0f0; color: #0f0; }
-        .btn-primary:hover { background-color: #0f0; color: #000; }
     </style>
 </head>
 <body class="bootstrap-386">
 
-    <div class="container">
-        <h1 class="display-4">Chat con Ollama</h1>
+<div id="auth-panel">
+    <h1>ACCESO AL SISTEMA</h1>
+    <form hx-post="/auth" hx-target="#auth-panel" hx-swap="outerHTML">
+        <label for="token">Ingrese su token maestro:</label>
+        <input type="password" name="token" id="token" class="form-control" />
+        <button class="btn btn-primary mt-2" type="submit">Ingresar</button>
+    </form>
+</div>
 
-        <div id="response-area" class="chat-box well mb-3">
-            <!-- Historial de mensajes -->
-        </div>
+<div id="main-ui" class="hidden">
+    <ul class="nav nav-tabs" id="menu-tabs" role="tablist">
+        <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#chat">F1 Chat</a></li>
+        <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#faiss">F2 FAISS</a></li>
+        <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#chroma">F3 ChromaDB</a></li>
+        <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#log">F4 Registro</a></li>
+        <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#config">F5 Configuración</a></li>
+    </ul>
 
-        <form id="chat-form"
-              hx-post="/chat"
-              hx-trigger="submit"
-              hx-target="#response-area"
-              hx-swap="beforeend"
-              class="well">
-            <div class="form-group">
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="chat">
+            <div id="response-area" class="chat-box mb-3"></div>
+            <form id="chat-form" hx-post="/chat-ui" hx-trigger="submit" hx-target="#response-area" hx-swap="beforeend">
                 <label for="message">Escribe tu mensaje:</label>
                 <textarea name="message" id="message" rows="3" class="form-control"></textarea>
-            </div>
-            <button type="submit" class="btn btn-primary">Enviar</button>
-        </form>
+                <button type="submit" class="btn btn-primary mt-2">Enviar</button>
+            </form>
+        </div>
+        <div class="tab-pane fade" id="faiss">
+            <h4>Contenido FAISS</h4>
+            <div id="faiss-data" hx-get="/memory/faiss" hx-trigger="load"></div>
+        </div>
+        <div class="tab-pane fade" id="chroma">
+            <h4>Contenido ChromaDB</h4>
+            <div id="chroma-data" hx-get="/memory/chroma" hx-trigger="load"></div>
+        </div>
+        <div class="tab-pane fade" id="log">
+            <h4>Registro de consultas</h4>
+            <div id="logs" hx-get="/logs" hx-trigger="load"></div>
+        </div>
+        <div class="tab-pane fade" id="config">
+            <h4>Editor de Configuración (JSON)</h4>
+            <form hx-post="/config/update" hx-target="#config" hx-swap="outerHTML">
+                <textarea name="config" rows="12" class="form-control" hx-get="/config" hx-trigger="load"></textarea>
+                <button class="btn btn-primary mt-2">Guardar</button>
+            </form>
+        </div>
     </div>
+</div>
+
 <script>
-    document.body.addEventListener('htmx:afterSwap', (event) => {
-        if (event.target.id === "response-area") {
-            event.target.scrollTop = event.target.scrollHeight;
+    document.body.addEventListener("htmx:afterSwap", function(evt) {
+        if (evt.detail.target.id === "auth-panel") {
+            document.getElementById("main-ui").classList.remove("hidden");
         }
     });
 </script>
+
 </body>
 </html>

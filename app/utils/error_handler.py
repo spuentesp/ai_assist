@@ -2,6 +2,7 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi import HTTPException
 from app.builders import htmx_builder
 
+
 def handle_error_response(error: Exception, is_htmx: bool = False):
     # Valores por defecto
     status_code = 500
@@ -21,3 +22,5 @@ def handle_error_response(error: Exception, is_htmx: bool = False):
 
     # JSON API
     return JSONResponse(content={"error": message}, status_code=status_code)
+
+
