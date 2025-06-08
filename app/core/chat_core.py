@@ -1,40 +1,56 @@
-from app.memory.short_term_memory import ShortTermMemory
-from app.core.chroma_core import ChromaCore
-from app.llm_clients.llm_router import ask_llm
-from app.builders.prompt_builder import build_enriched_prompt
+from app.memory.memory_orchestrator import MemoryOrchestrator
+from app.llm_clients.llm_orchestrator import LLMOrchestrator
+from app.utils.utils import render_template
+
 
 class ChatCore:
+    """
+    Core class responsible for handling chat interactions between the user and the system.
+    It retrieves memory context, constructs prompts, invokes the LLM orchestrator, and stores interactions.
+    """
     def __init__(self):
-        self.short_memory = ShortTermMemory()
-        self.long_memory = ChromaCore(
-            collection_name="chat_memory",
-            embedding_model="ollama",  # o "deepseek"
-            model_config={"model": "mistral"}  # configuraciones específicas del modelo
-        )
+        """
+        Initializes the ChatCore with:
+        - A memory orchestrator that routes queries to long- and short-term memory.
+        - A smart LLM orchestrator for parallel model selection and meta-ranking.
+        """
+        self.memory_orchestrator = MemoryOrchestrator()
+        self.llm_orchestrator = LLMOrchestrator()
 
     def handle_message(self, message: str) -> str:
+        """
+        Handles a user message by:
+        1. Retrieving context from short- and long-term memory.
+        2. Constructing a context-enriched prompt.
+        3. Sending the prompt to the LLM orchestrator.
+        4. Storing the message and response in memory.
+
+        Args:
+            message (str): User's input message.
+
+        Returns:
+            str: Generated response from the LLM orchestrator.
+        """
         if not message:
             raise ValueError("Mensaje vacío.")
 
-        # Recuperar contexto corto
-        short_context = self.short_memory.query(message)
+        # Step 1: Retrieve relevant memory context
+        memory_context = self.memory_orchestrator.query(message)
 
-        # Recuperar contexto largo de ChromaDB
-        long_context_results = self.long_memory.query(message)
-        long_context = [res for res in long_context_results.get("documents", [[]])[0]]
+        # Step 2: Build the enriched prompt
+        enriched_prompt = render_template(
+                            "enriched_prompt.j2",
+                            {
+                                "short_context": "",  # Add short context if needed
+                                "long_context": "\n".join(memory_context),
+                                "question": message
+                            }
+                        )
 
-        # Construir prompt
-        enriched_prompt = build_enriched_prompt(
-            message,
-            short_context_str="\n".join(short_context),
-            long_context_str="\n".join(long_context)
-        )
+        # Step 3: Use LLM orchestrator to generate a response
+        response = self.llm_orchestrator.ask(enriched_prompt)
 
-        # Consultar LLM
-        response = ask_llm(enriched_prompt)
-
-        # Guardar interacciones
-        self.short_memory.add_interaction(message, response)
-        self.long_memory.add_document(doc_id=message[:48], content=f"{message}\n{response}")
+        # Step 4: Store the interaction in memory
+        self.memory_orchestrator.update_memory(message, response)
 
         return response
