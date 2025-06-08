@@ -1,46 +1,70 @@
-from app.core.chroma_core import ChromaCore
-from app.llm_clients.llm_router import get_embedding_model_and_config
+from typing import List, Dict, Optional
+
+from .store.chroma_memory_store import ChromaMemoryStore
+from .store.memory_store_interface import MemoryStore
+from .store.postgres_memory_store import PostgresMemoryStore
+from .store.mongo_memory_store import MongoMemoryStore
+from app.embeddings.embeddings  import EmbeddingFunction
+from app.llm_clients.llm_router import get_embedding_function
 
 class LongTermMemory:
     def __init__(self):
-        model_key, model_config = get_embedding_model_and_config()
-
+        # Instanciar las diferentes fuentes de memoria
         self.sources = {
-                "chroma": ChromaCore(
-        collection_name="long_memory",
-        embedding_model=model_key,
-        model_config=model_config
-    ),
-            # en el futuro:
-            # "doc_db": DocumentDBClient(),
-            # "sql": SQLMemoryClient(),
-            # "faiss": FAISSMemory(path, embedding_fn),
+            "chroma": ChromaMemoryStore(path="chroma", collection_name="long_term"),
+            "postgres": PostgresMemoryStore(),
+            "mongo": MongoMemoryStore(),
+            # Agregar más fuentes de memoria según sea necesario
         }
+
+    def decide_memory_source(self, query_text: str) -> MemoryStore:
+        """
+        Decide qué fuente de memoria usar en función del tipo de consulta.
+        Aquí podrías usar un heurístico basado en el contenido de la consulta.
+        """
+        # Ejemplo simple: Si la consulta parece ser semántica, usar la memoria vectorial
+        if "busqueda semántica" in query_text:
+            return self.sources["chroma"]
+        else:
+            return self.sources["postgres"]
 
     def add_interaction(self, user_message: str, assistant_response: str):
+        """
+        Almacena la interacción, decidiendo qué memoria usar para almacenarla.
+        """
+        memory_source = self.decide_memory_source(user_message)
         combined = f"Usuario: {user_message}\nAsistente: {assistant_response}"
-        doc_id = f"msg-{self.sources['chroma'].collection.count() + 1}"
-        self.sources["chroma"].add_document(doc_id, combined)
-        # Aquí podrías agregar otras fuentes si quisieras persistir en múltiples lugares
+        doc_id = f"msg-{memory_source.get_stats().get('total_documents') + 1}"
+        memory_source.add(doc_id, combined)
 
-    def query(self, message: str, n_results: int = 5) -> list[str]:
-        results = []
-
-        chroma_results = self.sources["chroma"].query(message, n_results=n_results)
-        results.extend(chroma_results.get("documents", [[]])[0])
-
-        # futuro:
-        # doc_results = self.sources["doc_db"].query(...)
-        # results.extend(doc_results)
-
+    def query(self, query_text: str, n_results: int = 5) -> List[str]:
+        """
+        Consulta la memoria para obtener resultados basados en la semántica.
+        Si no encuentra en la memoria vectorial, consulta en la base de datos estructurada.
+        """
+        # Realizar búsqueda semántica
+        memory_source = self.decide_memory_source(query_text)
+        results = memory_source.query(query_text, n_results)
+        
+        # Si no se encuentran resultados, se puede buscar en la base de datos estructurada (ejemplo con PostgreSQL)
+        if not results:
+            if memory_source != self.sources["postgres"]:
+                results = self.sources["postgres"].query(query_text, n_results)
+        
         return results
 
-    def get_stats(self):
-        return {
-            "chroma": self.sources["chroma"].get_stats(),
-            # "doc_db": self.sources["doc_db"].get_stats(),
-        }
+    def get_stats(self) -> Dict:
+        """
+        Obtiene estadísticas de todas las fuentes de memoria.
+        """
+        stats = {}
+        for source_name, source in self.sources.items():
+            stats[source_name] = source.get_stats()
+        return stats
 
     def clear_all(self):
-        self.sources["chroma"].clear_all()
-        # self.sources["doc_db"].clear_all()
+        """
+        Limpia todas las fuentes de memoria.
+        """
+        for source_name, source in self.sources.items():
+            source.clear()

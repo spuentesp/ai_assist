@@ -5,3 +5,7 @@ sentence-transformers
 uvicorn
 httpx
 jinja2
+psycopg2
+python-dotenv
+redis
+pymongo

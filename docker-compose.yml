@@ -1,5 +1,7 @@
 version: "3.9"
+
 services:
+  # Agente (Your FastAPI app)
   agente:
     build: .
     ports:
@@ -7,3 +9,56 @@ services:
     volumes:
       - .:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      DEEPSEEK_APIKEY: ${DEEPSEEK_APIKEY}
+      MISTRAL_APIKEY: ${MISTRAL_APIKEY}
+      POSTGRES_DB_NAME: ${POSTGRES_DB_NAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: postgres  # Connects to the postgres container
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      MONGO_DB_NAME: ${MONGO_DB_NAME}
+      MONGO_COLLECTION_NAME: ${MONGO_COLLECTION_NAME}
+      MONGO_HOST: mongo  # Connects to the mongo container
+      MONGO_PORT: ${MONGO_PORT}
+    depends_on:
+      - postgres
+      - mongo
+    networks:
+      - backend
+
+  # PostgreSQL service
+  postgres:
+    image: postgres:13
+    container_name: postgres_container
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB_NAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"  # Exposes PostgreSQL to the host
+    networks:
+      - backend
+
+  # MongoDB service
+  mongo:
+    image: mongo:4.4
+    container_name: mongo_container
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME}
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"  # Exposes MongoDB to the host
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  mongo_data:

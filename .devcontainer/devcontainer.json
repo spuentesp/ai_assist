@@ -4,13 +4,25 @@
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
-  "postCreateCommand": "pip install --upgrade pip && pip install fastapi[all] requests",
+  "postCreateCommand": "pip install --upgrade pip && pip install fastapi[all] requests flake8 black isort pytest",
   "customizations": {
     "vscode": {
       "extensions": [
         "ms-python.python",
-        "ms-python.vscode-pylance"
-      ]
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "ms-python.flake8",
+        "ms-python.isort",
+        "ms-azuretools.vscode-docker",
+        "ms-pythonpytest.python-pytest"
+      ],
+      "settings": {
+        "python.formatting.provider": "black",
+        "editor.formatOnSave": true,
+        "python.linting.flake8Enabled": true,
+        "python.linting.enabled": true,
+        "python.sortImports.args": ["--profile", "black"]
+      }
     }
   },
   "forwardPorts": [8000],

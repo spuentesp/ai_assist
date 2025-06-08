@@ -2,7 +2,7 @@ import os
 import requests
 from dotenv import load_dotenv
 from app.embeddings.embeddings import MistralEmbedding
-from app.llm_clients.adapters.adapter_registry import register_adapter
+from .adapter_registry import register_adapter
 
 load_dotenv()
 MISTRAL_API_KEY = os.getenv("MISTRAL_APIKEY")

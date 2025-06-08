@@ -1,5 +1,3 @@
-from . import deepseek_adapter, mistral_adapter, ollama_adapter
-
 adapter_map = {}
 
 def register_adapter(name):

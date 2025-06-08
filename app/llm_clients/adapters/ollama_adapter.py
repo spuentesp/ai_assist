@@ -1,6 +1,6 @@
 import requests
 from app.embeddings.embeddings import OllamaEmbedding
-from app.llm_clients.adapters.adapter_registry import register_adapter
+from .adapter_registry import register_adapter
 
 OLLAMA_URL = "http://host.docker.internal:11434/api/generate"
 
