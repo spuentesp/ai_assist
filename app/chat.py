@@ -1,13 +1,11 @@
 from fastapi import Request, APIRouter, Form
 from fastapi.responses import JSONResponse, HTMLResponse
 
-from .llm_clients.llm_router import ask_llm
-from .memory.short_term_memory import ShortTermMemory
-from .memory.long_term_memory import LongTermMemory
+from app.web.htmx_templates import htmx_fragment, htmx_error
+from app.core.chat_core import ChatCore
 
 router = APIRouter()
-short_memory = ShortTermMemory()
-long_memory = LongTermMemory()
+chat_core = ChatCore()
 
 
 @router.post("/chat")
@@ -33,32 +31,14 @@ async def handle_json_request(data):
 
 async def handle_htmx_request(message):
     response = process_message(message)
-    html_fragment = build_htmx_response(message, response)
-    return HTMLResponse(content=html_fragment)
+    return htmx_fragment("Usuario", message, "Asistente", response)
 
 
 def process_message(message):
     if not message:
         raise ValueError("No se proporcionó ningún mensaje.")
 
-    # Recuperar contexto corto
-    short_context = short_memory.query(message)
-    short_context_str = "\n".join(short_context)
-
-    # Recuperar contexto largo
-    long_context = long_memory.query(message)
-    long_context_str = "\n".join(long_context)
-
-    # Combinar
-    enriched_prompt = build_enriched_prompt(message, short_context_str, long_context_str)
-
-    response = ask_llm(enriched_prompt)
-
-    # Guardar en ambas memorias
-    short_memory.add_interaction(message, response)
-    long_memory.add_interaction(message, response)
-
-    return response
+    return chat_core.handle_message(message)
 
 
 # --- Builders ---
@@ -67,29 +47,9 @@ def extract_message(data):
     return data.get("message")
 
 
-def build_enriched_prompt(message, short_context_str, long_context_str):
-    return f"""Contexto corto plazo:
-{short_context_str}
-
-Contexto largo plazo:
-{long_context_str}
-
-Pregunta:
-{message}
-"""
-
-
-def build_htmx_response(message, response):
-    return f"""
-    <hr>
-    <div class='message user'><strong>Usuario:</strong> {message}</div>
-    <div class='message bot'><strong>Asistente:</strong> {response}</div>
-    """
-
-
 def handle_error_response(error, is_htmx=False):
     error_msg = f"Error interno: {str(error)}"
     if is_htmx:
-        return HTMLResponse(content=f"<div class='message error'><strong>Error:</strong> {error_msg}</div>")
+        return htmx_error(error_msg)
     else:
         return JSONResponse(content={"error": error_msg}, status_code=500)
