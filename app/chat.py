@@ -1,5 +1,5 @@
 from fastapi import Request, APIRouter, Form
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse
 
 from app.web.htmx_templates import htmx_fragment, htmx_error
 from app.core.chat_core import ChatCore
