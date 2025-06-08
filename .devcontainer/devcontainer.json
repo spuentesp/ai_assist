@@ -1,27 +1,19 @@
 {
-  "name": "Python Dev Container",
-  "image": "mcr.microsoft.com/devcontainers/python:3.11",
-  "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
-  },
-  "postCreateCommand": "pip install --upgrade pip && pip install fastapi[all] requests flake8 black isort pytest",
+  "name": "AI Assist DevContainer",
+  "dockerComposeFile": ["../docker-compose.yml"],
+  "service": "dev",
+  "workspaceFolder": "/workspace",
+  "postCreateCommand": "pip install --upgrade pip && pip install fastapi[all] requests",
   "customizations": {
     "vscode": {
       "extensions": [
         "ms-python.python",
         "ms-python.vscode-pylance",
-        "ms-python.black-formatter",
-        "ms-python.flake8",
-        "ms-python.isort",
-        "ms-azuretools.vscode-docker",
-        "ms-pythonpytest.python-pytest"
+        "ms-azuretools.vscode-docker"
       ],
       "settings": {
         "python.formatting.provider": "black",
-        "editor.formatOnSave": true,
-        "python.linting.flake8Enabled": true,
-        "python.linting.enabled": true,
-        "python.sortImports.args": ["--profile", "black"]
+        "editor.formatOnSave": true
       }
     }
   },

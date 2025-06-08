@@ -1,4 +1,4 @@
-from chromadb import PersistentClient
+from chromadb import HttpClient
 from app.llm_clients.llm_router import get_embedding_function
 from .memory_store_interface import MemoryStore
 from typing import List, Dict, Optional
@@ -6,25 +6,42 @@ import os
 
 
 class ChromaMemoryStore(MemoryStore):
-    def __init__(self, path: str = "chroma", collection_name: str = "long_term"):
-        # Ensure the directory exists
-        os.makedirs(path, exist_ok=True)
-        self.client = PersistentClient(path=path)
+    def __init__(
+        self,
+        host: str = None,
+        port: int = None,
+        collection_name: str = "long_term"
+    ):
+        # Use environment variables or defaults
+        host = host or os.getenv("CHROMA_HOST", "localhost")
+        port = port or int(os.getenv("CHROMA_PORT", "8001"))
+        self.client = HttpClient(host=host, port=port)
         self.embedding_fn = get_embedding_function()
         self.collection = self.client.get_or_create_collection(
             name=collection_name,
             embedding_function=self.embedding_fn
         )
 
-    def add(self, id: str, content: str, metadata: Optional[Dict] = None) -> None:
+    def add(
+        self,
+        id: str,
+        content: str,
+        metadata: Optional[Dict] = None
+    ) -> None:
         self.collection.add(
             documents=[content],
             ids=[id],
             metadatas=[metadata or {}]
         )
 
-    def query(self, query_text: str, n_results: int = 5) -> List[str]:
-        results = self.collection.query(query_texts=[query_text], n_results=n_results)
+    def query(
+        self,
+        query_text: str,
+        n_results: int = 5
+    ) -> List[str]:
+        results = self.collection.query(
+            query_texts=[query_text], n_results=n_results
+        )
         return results.get("documents", [[]])[0]
 
     def get_stats(self) -> Dict:

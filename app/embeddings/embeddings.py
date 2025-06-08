@@ -6,7 +6,8 @@ import requests
 class OpenAIEmbedding(EmbeddingFunction):
     def __init__(self, api_key=None):
         from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction
-        self.fn = OpenAIEmbeddingFunction(api_key=api_key or os.getenv("OPENAI_API_KEY"))
+        self.fn = OpenAIEmbeddingFunction(
+            api_key=api_key or os.getenv("OPENAI_API_KEY"))
 
     def __call__(self, texts):
         return self.fn(texts)
@@ -15,7 +16,8 @@ class OpenAIEmbedding(EmbeddingFunction):
 class CohereEmbedding(EmbeddingFunction):
     def __init__(self, api_key=None):
         from chromadb.utils.embedding_functions import CohereEmbeddingFunction
-        self.fn = CohereEmbeddingFunction(api_key=api_key or os.getenv("COHERE_API_KEY"))
+        self.fn = CohereEmbeddingFunction(
+            api_key=api_key or os.getenv("COHERE_API_KEY"))
 
     def __call__(self, texts):
         return self.fn(texts)
@@ -23,6 +25,7 @@ class CohereEmbedding(EmbeddingFunction):
 
 class OllamaEmbedding(EmbeddingFunction):
     """Generic Ollama embedding function using local model."""
+
     def __init__(self, model="mistral", host="http://localhost:11434"):
         self.model = model
         self.host = host
@@ -59,6 +62,7 @@ class DeepSeekEmbedding(EmbeddingFunction):
 
 class MistralEmbedding(EmbeddingFunction):
     """For use with official mistral.ai API."""
+
     def __init__(self, api_key=None, endpoint=None, model="mistral-embed"):
         self.api_key = api_key or os.getenv("MISTRAL_APIKEY")
         self.endpoint = endpoint or "https://api.mistral.ai/v1/embeddings"
@@ -81,4 +85,3 @@ class MistralEmbedding(EmbeddingFunction):
         )
         response.raise_for_status()
         return [item["embedding"] for item in response.json()["data"]]
-

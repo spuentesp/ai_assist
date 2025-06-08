@@ -1,31 +1,21 @@
+version: "3.9"
+
 services:
-  # Agente (Your FastAPI app)
-  agente:
-    build: .
-    ports:
-      - "8000:8000"
+  dev:
+    image: mcr.microsoft.com/devcontainers/python:3.11
+    container_name: dev_container
+    working_dir: /workspace
     volumes:
-      - .:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    environment:
-      DEEPSEEK_APIKEY: ${DEEPSEEK_APIKEY}
-      MISTRAL_APIKEY: ${MISTRAL_APIKEY}
-      POSTGRES_DB_NAME: ${POSTGRES_DB_NAME}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_HOST: postgres # Connects to the postgres container
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      MONGO_DB_NAME: ${MONGO_DB_NAME}
-      MONGO_COLLECTION_NAME: ${MONGO_COLLECTION_NAME}
-      MONGO_HOST: mongo # Connects to the mongo container
-      MONGO_PORT: ${MONGO_PORT}
-    depends_on:
-      - postgres
-      - mongo
+      - .:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: sleep infinity
     networks:
       - backend
+    environment:
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "8000:8000"
 
-  # PostgreSQL service
   postgres:
     image: postgres:13
     container_name: postgres_container
@@ -36,11 +26,10 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432" # Exposes PostgreSQL to the host
+      - "5432:5432"
     networks:
       - backend
 
-  # MongoDB service
   mongo:
     image: mongo:4.4
     container_name: mongo_container
@@ -49,7 +38,23 @@ services:
     volumes:
       - mongo_data:/data/db
     ports:
-      - "27017:27017" # Exposes MongoDB to the host
+      - "27017:27017"
+    networks:
+      - backend
+
+  redis:
+    image: redis:7
+    container_name: redis_container
+    ports:
+      - "6379:6379"
+    networks:
+      - backend
+
+  chroma:
+    image: chromadb/chroma:latest
+    container_name: chroma_container
+    ports:
+      - "8001:8000"
     networks:
       - backend
 
