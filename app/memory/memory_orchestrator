@@ -1,0 +1,245 @@
+from typing import List, Dict
+
+from app.memory.long_term_memory import LongTermMemory
+from app.memory.short_term_memory import ShortTermMemory
+from app.embeddings.embeddings import EmbeddingFunction
+from app.llm_clients.llm_router import get_embedding_function
+import time
+
+class MemoryOrchestrator:
+    def __init__(self):
+        # Initialize existing memory sources
+        self.short_term_memory = ShortTermMemory()  # Faiss, Redis, and SQLite as short-term memory
+        self.long_term_memory = LongTermMemory()    # PostgreSQL and MongoDB as long-term memory
+
+    def query(self, query_text: str, n_results: int = 5) -> List[str]:
+        """
+        Queries the appropriate memory (short-term or long-term) based on query type.
+        """
+        # Get the query embedding for semantic vs structured decision
+        query_embedding = self.short_term_memory.embedding_function(query_text)
+
+        # Use short-term memory for semantic queries (session-based context)
+        if self.short_term_memory.is_semantic(query_text, query_embedding):
+            results = self.short_term_memory.query(query_text, n_results)
+        else:
+            # Use long-term memory for structured queries (persistent knowledge)
+            results = self.long_term_memory.query(query_text, n_results)
+        
+        return results
+
+    def add_interaction(self, user_message: str, assistant_response: str):
+        """
+        Store an interaction in the appropriate memory (short-term or long-term).
+        """
+        query_embedding = self.short_term_memory.embedding_function(user_message)
+        
+        # Check if the query is semantic (session-based) or structured (persistent)
+        if self.short_term_memory.is_semantic(user_message, query_embedding):
+            # Store in short-term memory if it's semantic
+            self.short_term_memory.add_interaction(user_message, assistant_response)
+        else:
+            # Store in long-term memory if it's structured
+            self.long_term_memory.add_interaction(user_message, assistant_response)
+
+    def update_memory(self, query_text: str, assistant_response: str):
+        """
+        Updates the memory based on the interaction, saving relevant information for future queries.
+        """
+        self.add_interaction(query_text, assistant_response)
+
+        # Optionally, store important information in long-term memory based on heuristics
+        if self.long_term_memory.is_important_interaction(query_text):
+            self.long_term_memory.add_interaction(query_text, assistant_response)
+
+    def respond_to_query(self, query_text: str) -> str:
+        """
+        Handles the query by querying memory, interacting with LLM, and updating memory.
+        """
+        results = self.query(query_text)
+
+        # Get context for LLM to generate a response
+        context = "\n".join(results)
+
+        # Send context to LLM engine for generating a response
+        assistant_response = self.llm_client.get_response(query_text, context)
+
+        # Update memory with the new interaction
+        self.update_memory(query_text, assistant_response)
+
+        return assistant_response
+
+    def clear_short_term_memory(self):
+        """
+        Clears short-term memory (session-specific data), but does NOT clear long-term memory.
+        """
+        self.short_term_memory.clear_all()
+
+    def __init__(self):
+        """
+        Initialize the orchestrator which connects all memory stores and interacts with the LLM engine.
+        """
+        # Initialize short-term and long-term memory stores
+        self.short_term_memory_faiss = FaissMemoryStore()  # Session-based memory (Faiss)
+        self.short_term_memory_redis = RedisMemoryStore()  # Fast in-memory cache (Redis)
+        
+        # Long-term memory stores
+        self.long_term_memory_sqlite = SQLiteMemoryStore()  # Persistent, structured storage (SQLite)
+        self.long_term_memory_postgres = PostgresMemoryStore()  # Persistent, structured storage (PostgreSQL)
+        self.long_term_memory_mongo = MongoMemoryStore()  # Flexible, persistent storage (MongoDB)
+        
+        # Embedding function for semantic understanding of queries
+        self.embedding_function = get_embedding_function()
+        
+        # Session history for tracking recent interactions
+        self.session_history = []
+        
+    def process_query(self, query_text: str, session_based: bool = False) -> str:
+        """
+        Process the user query, deciding whether to use short-term or long-term memory and passing it to the LLM engine.
+        
+        Parameters:
+        - query_text: The user query to process.
+        - session_based: Flag indicating whether the query is part of an ongoing session.
+        
+        Returns:
+        - The generated response from the LLM engine.
+        """
+        # Step 1: Decide which memory source to use (short-term vs. long-term)
+        memory_source = self.decide_memory_source(query_text, session_based)
+        
+        # Step 2: Query memory to retrieve relevant context for the LLM engine
+        context = self.query_memory(query_text, memory_source)
+        
+        # Step 3: Pass the context to the LLM engine to generate a response
+        response = self.query_llm(query_text, context)
+        
+        # Step 4: Update the memory with the new interaction (e.g., user message and assistant response)
+        self.add_interaction(query_text, response, memory_source)
+        
+        return response
+
+    def decide_memory_source(self, query_text: str, session_based: bool = False) -> MemoryStore:
+        """
+        Decide which memory source (short-term vs. long-term) to use based on the query type and context.
+        
+        Parameters:
+        - query_text: The query to process.
+        - session_based: Flag indicating whether the query is part of an ongoing session.
+        
+        Returns:
+        - The appropriate memory source (Faiss, Redis, SQLite, etc.)
+        """
+        if session_based:
+            # If the query is part of an ongoing session, use short-term memory (Faiss or Redis)
+            return self.short_term_memory_faiss
+        
+        # Decide based on semantic or structured queries
+        if self.is_semantic(query_text):
+            # If semantic, use short-term memory (Faiss or Redis)
+            return self.short_term_memory_faiss
+        else:
+            # If structured, use long-term memory (SQLite, PostgreSQL, MongoDB)
+            return self.long_term_memory_sqlite
+
+    def is_semantic(self, query_text: str) -> bool:
+        """
+        Check whether the query is semantic (open-ended or exploratory) based on embeddings and query context.
+        
+        Parameters:
+        - query_text: The query to check.
+        
+        Returns:
+        - True if the query is semantic, False otherwise.
+        """
+        query_embedding = self.embedding_function(query_text)
+
+        # Compare to session memory (Faiss/Redis) and determine if it's semantic based on similarity
+        for recent_interaction in self.session_history:
+            stored_embedding = recent_interaction['embedding']
+            similarity = 1 - cosine(query_embedding, stored_embedding)  # Cosine similarity
+            if similarity > 0.8:  # Threshold for semantic queries
+                return True
+
+        return False
+
+    def query_memory(self, query_text: str, memory_source: MemoryStore) -> str:
+        """
+        Query the selected memory source to retrieve the relevant context for the LLM engine.
+        
+        Parameters:
+        - query_text: The query to search.
+        - memory_source: The memory source to query (Faiss, Redis, SQLite, etc.).
+        
+        Returns:
+        - The retrieved context (relevant data from memory) for the LLM engine.
+        """
+        results = memory_source.query(query_text, n_results=5)
+
+        # Combine the results into a single context (could be a concatenation of relevant pieces)
+        context = "\n".join(results)
+        
+        return context
+
+    def query_llm(self, query_text: str, context: str) -> str:
+        """
+        Send the query and context to the LLM engine to generate a response.
+        
+        Parameters:
+        - query_text: The user's query.
+        - context: The relevant context from memory to help the LLM generate an answer.
+        
+        Returns:
+        - The generated response from the LLM.
+        """
+        # Here you would interact with your LLM engine. For example:
+        # llm = LLMEngine()  # Assuming LLMEngine is your interface to the model.
+        # response = llm.generate(query_text, context)
+        response = f"Generated response for: {query_text} with context: {context}"  # Placeholder for actual LLM response
+        return response
+
+    def add_interaction(self, user_message: str, assistant_response: str, memory_source: MemoryStore):
+        """
+        Add the user message and assistant response to the appropriate memory source.
+        
+        Parameters:
+        - user_message: The user message.
+        - assistant_response: The assistant's response.
+        - memory_source: The memory source (Faiss, Redis, SQLite, etc.) to store the interaction.
+        """
+        doc_id = f"msg-{memory_source.get_stats().get('total_items') + 1}"
+        memory_source.add(doc_id, user_message, {"embedding": self.embedding_function(user_message)})
+        memory_source.add(doc_id, assistant_response, {"embedding": self.embedding_function(assistant_response)})
+
+        # Add to session history for future queries (only for session-based interactions)
+        self.session_history.append({
+            "message": user_message,
+            "embedding": self.embedding_function(user_message),
+            "assistant_response": assistant_response
+        })
+
+    def get_stats(self) -> Dict:
+        """
+        Retrieve statistics for all memory stores (Faiss, Redis, SQLite, PostgreSQL, MongoDB).
+        
+        Returns:
+        - Dictionary with stats for each memory store.
+        """
+        stats = {
+            "short_term_memory_faiss": self.short_term_memory_faiss.get_stats(),
+            "short_term_memory_redis": self.short_term_memory_redis.get_stats(),
+            "long_term_memory_sqlite": self.long_term_memory_sqlite.get_stats(),
+            "long_term_memory_postgres": self.long_term_memory_postgres.get_stats(),
+            "long_term_memory_mongo": self.long_term_memory_mongo.get_stats()
+        }
+        return stats
+
+    def clear_all(self):
+        """
+        Clear all memory stores (both short-term and long-term).
+        """
+        self.short_term_memory_faiss.clear()
+        self.short_term_memory_redis.clear()
+        self.long_term_memory_sqlite.clear()
+        self.long_term_memory_postgres.clear()
+        self.long_term_memory_mongo.clear()

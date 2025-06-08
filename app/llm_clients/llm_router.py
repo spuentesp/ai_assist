@@ -1,7 +1,6 @@
 import json
 from .adapters import adapter_registry
 from .adapters.adapter_registry import adapter_map
-from .adapters import deepseek_adapter, ollama_adapter, mistral_adapter
 
 # Carga la configuración de prioridad y modelos habilitados
 with open("app/llm_clients/llm_config.json") as f:
