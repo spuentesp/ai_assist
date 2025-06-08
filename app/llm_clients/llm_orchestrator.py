@@ -6,6 +6,7 @@ from app.utils.utils import load_template, render_template
 
 TEMPLATE_PATH = "app/llm_clients/prompts/rank_candidates.j2"
 
+
 class LLMOrchestrator:
     def __init__(self, config_path: str = "app/llm_clients/llm_config.json"):
         with open(config_path) as f:
@@ -35,21 +36,19 @@ class LLMOrchestrator:
 
         return candidates
 
-
-       
     def rank_candidates(self, query: str, candidates: List[str]) -> Tuple[str, str]:
-            """
-            Uses the meta-LLM to select the best answer among candidates.
-            Returns the selected candidate.
-            """
-            prompt_str = load_template(TEMPLATE_PATH)
-            rendered_prompt = render_template(prompt_str, {
+        """
+        Uses the meta-LLM to select the best answer among candidates.
+        Returns the selected candidate.
+        """
+        prompt_str = load_template(TEMPLATE_PATH)
+        rendered_prompt = render_template(prompt_str, {
             "query": query,
             "candidates": candidates
-            })
+        })
 
-            best_answer = ask_llm(rendered_prompt)
-            return best_answer, rendered_prompt
+        best_answer = ask_llm(rendered_prompt)
+        return best_answer, rendered_prompt
 
     def respond(self, prompt: str) -> str:
         """
@@ -58,4 +57,3 @@ class LLMOrchestrator:
         candidates = self.ask_all(prompt)
         best = self.rank_candidates(prompt, candidates)
         return best["response"]
-
