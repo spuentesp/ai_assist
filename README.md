@@ -144,10 +144,6 @@ flowchart LR
 
 ---
 
-Este documento puede agregarse al `README.md` para explicar de forma completa la arquitectura del sistema **ai_assist**.
-
----
-
 ## Prerequisitos
 
 - Python 3 y pip (pre-instalados en el dev container)
