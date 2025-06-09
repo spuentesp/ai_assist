@@ -166,7 +166,7 @@ pip3 install -r requirements.txt
 Inicia la app FastAPI usando **uvicorn**:
 
 ```bash
-uvicorn main:app --reload
+uvicorn app.main:app --reload --host 0.0.0.0
 ```
 
 - Reemplaza `main:app` si tu punto de entrada es diferente.

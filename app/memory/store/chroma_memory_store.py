@@ -13,42 +13,48 @@ class ChromaMemoryStore(MemoryStore):
         collection_name: str = "long_term"
     ):
         """
-        Initializes a connection to the ChromaDB server and creates or retrieves
-        the specified collection with an embedding function.
+        Initializes a connection to the Chroma v1 server and retrieves
+        the specified collection. Embedding is handled externally.
         """
         host = host or os.getenv("CHROMA_HOST", "localhost")
-        port = port or int(os.getenv("CHROMA_PORT", "8001"))
+        port = port or int(os.getenv("CHROMA_PORT", "8000"))
         self.collection_name = collection_name
 
+        # Conexión al nuevo cliente REST v1
         self.client = HttpClient(host=host, port=port)
+
+        # Embedding externo
         self.embedding_fn = get_embedding_function()
+
+        # Crea o recupera la colección
         self.collection = self.client.get_or_create_collection(
-            name=self.collection_name,
-            embedding_function=self.embedding_fn
-        )
+            self.collection_name)
 
     def add(self, id: str, content: str, metadata: Optional[Dict] = None) -> None:
         """
-        Adds a new document to the collection.
+        Adds a new document to the collection using external embeddings.
         """
+        embedding = self.embedding_fn([content])[0]  # embed como lista
         self.collection.add(
             documents=[content],
             ids=[id],
-            metadatas=[metadata or {}]
+            metadatas=[metadata or {}],
+            embeddings=[embedding]
         )
 
     def query(self, query_text: str, n_results: int = 5) -> List[str]:
         """
-        Performs a similarity search on the collection.
-        Returns a list of the most similar documents.
+        Performs a similarity search using external embedding function.
         """
+        embedding = self.embedding_fn([query_text])[0]
         results = self.collection.query(
-            query_texts=[query_text], n_results=n_results)
+            query_embeddings=[embedding], n_results=n_results
+        )
         return results.get("documents", [[]])[0]
 
     def get_stats(self) -> Dict:
         """
-        Returns statistics about the current collection.
+        Returns basic statistics about the collection.
         """
         return {
             "collection": self.collection.name,
@@ -58,10 +64,7 @@ class ChromaMemoryStore(MemoryStore):
     def clear(self) -> None:
         """
         Deletes and recreates the collection.
-        Useful for resetting memory.
         """
         self.client.delete_collection(self.collection_name)
         self.collection = self.client.get_or_create_collection(
-            name=self.collection_name,
-            embedding_function=self.embedding_fn
-        )
+            self.collection_name)

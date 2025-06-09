@@ -1,7 +1,8 @@
 fastapi[all]
 requests
 faiss-cpu
-sentence-transformers
+sentence-transformers==2.2.2
+huggingface_hub==0.14.1
 uvicorn
 httpx
 jinja2
@@ -10,4 +11,6 @@ python-dotenv
 redis
 pymongo
 scipy
-chromadb
+chromadb-client==1.0.12
+weaviate-client==3.22.1
+protobuf==3.20.3

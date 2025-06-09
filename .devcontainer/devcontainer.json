@@ -5,7 +5,10 @@
   ],
   "service": "dev",
   "workspaceFolder": "/workspace",
-  "postCreateCommand": "pip install --upgrade pip && pip install fastapi[all] requests",
+  "forwardPorts": [
+    8000,
+    8001
+  ],
   "customizations": {
     "vscode": {
       "extensions": [
@@ -19,10 +22,6 @@
       }
     }
   },
-  "forwardPorts": [
-    8000
-  ],
-  "mounts": [
-    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
-  ]
+  "remoteUser": "vscode",
+  "postStartCommand": "echo 'Dev container listo.'"
 }

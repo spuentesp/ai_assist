@@ -9,7 +9,7 @@ from .security.resource_manager import resource_auth_middleware
 app = FastAPI()
 app.middleware("http")(resource_auth_middleware)
 
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/static", StaticFiles(directory="app/web/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
 

@@ -1,70 +1,73 @@
-version: "3.9"
-
 services:
   dev:
     build:
       context: .
-      dockerfile: Dockerfile
-    image: mcr.microsoft.com/devcontainers/python:3.11
-    container_name: dev_container
-    working_dir: /workspace
+      dockerfile: .devcontainer/Dockerfile
     volumes:
-      - .:/workspace
-      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/workspace:cached
+    working_dir: /workspace
     command: sleep infinity
-    networks:
-      - backend
-    environment:
-      - PYTHONUNBUFFERED=1
     ports:
       - "8000:8000"
+    depends_on:
+      - postgres
+      - mongo
+      - redis
+      - chroma
+      - weaviate
 
   postgres:
-    image: postgres:13
-    container_name: postgres_container
+    image: postgres:15-alpine
     environment:
-      POSTGRES_DB: ${POSTGRES_DB_NAME}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: memory_db
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    networks:
-      - backend
+      - postgres-data:/var/lib/postgresql/data
 
   mongo:
-    image: mongo:4.4
-    container_name: mongo_container
+    image: mongo:6.0
     environment:
-      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME}
+      MONGO_INITDB_ROOT_USERNAME: mongo
+      MONGO_INITDB_ROOT_PASSWORD: mongo
     volumes:
-      - mongo_data:/data/db
-    ports:
-      - "27017:27017"
-    networks:
-      - backend
+      - mongo-data:/data/db
 
   redis:
-    image: redis:7
-    container_name: redis_container
+    image: redis:7-alpine
+    command: [ "redis-server", "--appendonly", "no" ]
     ports:
       - "6379:6379"
-    networks:
-      - backend
+    volumes:
+      - redis-data:/data
 
   chroma:
-    image: chromadb/chroma:0.4.22
-    container_name: chroma_container
+    image: ghcr.io/chroma-core/chroma:1.0.0b0
+    container_name: chroma
     ports:
       - "8001:8000"
-    networks:
-      - backend
+    volumes:
+      - chroma-data:/chroma/index
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
 
-networks:
-  backend:
-    driver: bridge
+  weaviate:
+    image: semitechnologies/weaviate:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - QUERY_DEFAULTS_LIMIT=25
+      - AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=true
+      - PERSISTENCE_DATA_PATH=/var/lib/weaviate
+    volumes:
+      - weaviate-data:/var/lib/weaviate
 
 volumes:
-  postgres_data:
-  mongo_data:
+  postgres-data:
+  mongo-data:
+  weaviate-data:
+  chroma-data:
+  redis-data:
+
+

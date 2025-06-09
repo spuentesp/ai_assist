@@ -1,4 +1,6 @@
 from typing import List, Dict
+
+from app.memory.store.weaviate_memory_store import WeaviateMemoryStore
 from .store.chroma_memory_store import ChromaMemoryStore
 from .store.memory_store_interface import MemoryStore
 from .store.postgres_memory_store import PostgresMemoryStore
@@ -17,6 +19,7 @@ class LongTermMemory:
             "chroma": ChromaMemoryStore(collection_name="long_term"),
             "postgres": PostgresMemoryStore(),
             "mongo": MongoMemoryStore(),
+            "weaviate": WeaviateMemoryStore(context_name="long_term"),
             # Add more memory sources as needed
         }
         # Function to embed text queries
