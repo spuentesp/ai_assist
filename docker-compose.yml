@@ -51,7 +51,7 @@ services:
       - backend
 
   chroma:
-    image: chromadb/chroma:latest
+    image: chromadb/chroma:0.4.22
     container_name: chroma_container
     ports:
       - "8001:8000"

@@ -7,18 +7,20 @@ from app.embeddings.embeddings import EmbeddingFunction
 from app.llm_clients.llm_router import get_embedding_function
 from scipy.spatial.distance import cosine
 
+
 class LongTermMemory:
     def __init__(self):
         """
         Initialize different memory stores for long-term and short-term memory.
         """
         self.sources = {
-            "chroma": ChromaMemoryStore(path="chroma", collection_name="long_term"),
+            "chroma": ChromaMemoryStore(collection_name="long_term"),
             "postgres": PostgresMemoryStore(),
             "mongo": MongoMemoryStore(),
             # Add more memory sources as needed
         }
-        self.embedding_function = get_embedding_function()  # Function to embed text queries
+        # Function to embed text queries
+        self.embedding_function = get_embedding_function()
 
     def decide_memory_source(self, query_text: str) -> MemoryStore:
         """
@@ -30,7 +32,7 @@ class LongTermMemory:
         # If the query has semantic intent, prefer using Chroma (vector-based store)
         if self.is_semantic(query_text, query_embedding):
             return self.sources["chroma"]
-        
+
         # Otherwise, default to a structured memory store like PostgreSQL or MongoDB
         return self.sources["postgres"]
 
@@ -44,7 +46,8 @@ class LongTermMemory:
         # 1. Compare to recent session history embeddings (Faiss/Redis) for semantic relevance
         for recent_interaction in self.session_history:
             stored_embedding = recent_interaction['embedding']
-            similarity = 1 - cosine(query_embedding, stored_embedding)  # Cosine similarity calculation
+            # Cosine similarity calculation
+            similarity = 1 - cosine(query_embedding, stored_embedding)
 
             # 2. If the similarity is above the threshold, this is a semantic query related to session context
             if similarity > semantic_threshold:
@@ -68,15 +71,15 @@ class LongTermMemory:
         First try semantic search, then fallback to structured memory.
         """
         memory_source = self.decide_memory_source(query_text)
-        
+
         # Perform semantic query using vector-based store if determined
         results = memory_source.query(query_text, n_results)
-        
+
         # If no results are found, query in structured memory (PostgreSQL or MongoDB)
         if not results:
             if memory_source != self.sources["postgres"]:
                 results = self.sources["postgres"].query(query_text, n_results)
-        
+
         return results
 
     def get_stats(self) -> Dict:
